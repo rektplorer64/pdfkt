@@ -2,10 +2,11 @@ package com.rizzi.composepdf
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.rizzi.bouquet.HorizontalPdfReaderState
-import com.rizzi.bouquet.PdfReaderState
-import com.rizzi.bouquet.ResourceType
-import com.rizzi.bouquet.VerticalPdfReaderState
+import com.rizzi.bouquet.compose.state.HorizontalPdfReaderState
+import com.rizzi.bouquet.compose.state.PdfReaderState
+import com.rizzi.bouquet.DocumentResource
+import com.rizzi.bouquet.compose.state.VerticalPdfReaderState
+import com.rizzi.bouquet.loader.DocumentRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -15,12 +16,12 @@ class BouquetViewModel : ViewModel() {
 
     val switchState = mutableStateOf(false)
 
-    fun openResource(resourceType: ResourceType) {
+    fun openResource(documentResource: DocumentResource) {
         mStateFlow.tryEmit(
             if (switchState.value) {
-                HorizontalPdfReaderState(resourceType, true)
+                HorizontalPdfReaderState(DocumentRequest(documentResource), true)
             } else {
-                VerticalPdfReaderState(resourceType, true)
+                VerticalPdfReaderState(DocumentRequest(documentResource), true)
             }
         )
     }

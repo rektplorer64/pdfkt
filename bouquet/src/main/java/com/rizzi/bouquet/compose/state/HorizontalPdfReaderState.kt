@@ -1,21 +1,28 @@
-package com.rizzi.bouquet
+package com.rizzi.bouquet.compose.state
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.core.net.toUri
-import com.google.accompanist.pager.ExperimentalPagerApi
-import com.google.accompanist.pager.PagerState
+import com.rizzi.bouquet.DocumentResource
+import com.rizzi.bouquet.loader.DocumentRequest
 
-@OptIn(ExperimentalPagerApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 class HorizontalPdfReaderState(
-    resource: ResourceType,
-    isZoomEnable: Boolean = false,
+    request: DocumentRequest,
+    zoomEnabled: Boolean = false,
     isAccessibleEnable: Boolean = false,
-) : PdfReaderState(resource, isZoomEnable, isAccessibleEnable) {
+) : PdfReaderState(request, zoomEnabled, isAccessibleEnable) {
 
-    internal var pagerState: PagerState = PagerState()
+    internal var pagerState: PagerState = PagerStateImpl(
+        initialPage = 0,
+        initialPageOffsetFraction = 0f
+    ) {
+        pageCount
+    }
 
     override val currentPage: Int
         get() = pagerState.currentPage
@@ -27,24 +34,31 @@ class HorizontalPdfReaderState(
         val Saver: Saver<HorizontalPdfReaderState, *> = listSaver(
             save = {
                 val resource = it.file?.let { file ->
-                    ResourceType.Local(
+                    DocumentResource.Local(
                         file.toUri()
                     )
-                } ?: it.resource
+                } ?: it.request.type
+
                 listOf(
                     resource,
-                    it.isZoomEnable,
+                    it.zoomEnabled,
                     it.isAccessibleEnable,
-                    it.pagerState.currentPage
+                    it.pagerState.currentPage,
                 )
             },
             restore = {
                 HorizontalPdfReaderState(
-                    it[0] as ResourceType,
+                    DocumentRequest(it[0] as DocumentResource),
                     it[1] as Boolean,
                     it[2] as Boolean
                 ).apply {
-                    pagerState = PagerState(currentPage = it[3] as Int)
+                    pagerState = PagerStateImpl(
+                        initialPage = it[3] as Int,
+                        initialPageOffsetFraction = 0f,
+                        updatedPageCount = {
+                            pageCount
+                        }
+                    )
                 }
             }
         )
@@ -53,11 +67,11 @@ class HorizontalPdfReaderState(
 
 @Composable
 fun rememberHorizontalPdfReaderState(
-    resource: ResourceType,
-    isZoomEnable: Boolean = true,
+    request: DocumentRequest,
+    zoomEnabled: Boolean = true,
     isAccessibleEnable: Boolean = false,
 ): HorizontalPdfReaderState {
     return rememberSaveable(saver = HorizontalPdfReaderState.Saver) {
-        HorizontalPdfReaderState(resource, isZoomEnable, isAccessibleEnable)
+        HorizontalPdfReaderState(request, zoomEnabled, isAccessibleEnable)
     }
 }

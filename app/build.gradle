@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace 'com.rizzi.composepdf'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.rizzi.composepdf"
         minSdk 21
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
@@ -63,4 +63,8 @@ dependencies {
     androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_ui_version"
     debugImplementation "androidx.compose.ui:ui-tooling:$compose_ui_version"
     debugImplementation "androidx.compose.ui:ui-test-manifest:$compose_ui_version"
+
+    implementation("net.engawapg.lib:zoomable:1.6.1")
+
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

@@ -9,22 +9,40 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.app.ShareCompat
 import androidx.core.content.FileProvider
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.rizzi.bouquet.*
+import com.rizzi.bouquet.compose.BlackPage
+import com.rizzi.bouquet.compose.LazyPdfPageColumn
+import com.rizzi.bouquet.compose.pages
+import com.rizzi.bouquet.compose.state.HorizontalPdfReaderState
+import com.rizzi.bouquet.compose.state.ResultStatus
+import com.rizzi.bouquet.compose.state.VerticalPdfReaderState
 import com.rizzi.composepdf.ui.theme.ComposePDFTheme
 import java.io.File
 
@@ -154,7 +172,7 @@ class MainActivity : ComponentActivity() {
                 text = "Try to open a base64 pdf"
             ) {
                 viewModel.openResource(
-                    ResourceType.Base64(
+                    DocumentResource.Base64(
                         this@MainActivity.getString(R.string.base64_pdf)
                     )
                 )
@@ -164,7 +182,7 @@ class MainActivity : ComponentActivity() {
                 text = "Open a remote file from url"
             ) {
                 viewModel.openResource(
-                    ResourceType.Remote(
+                    DocumentResource.Remote(
                         url = this@MainActivity.getString(
                             R.string.pdf_url
                         ),
@@ -183,7 +201,7 @@ class MainActivity : ComponentActivity() {
                 text = "Open asset file in raw folder"
             ) {
                 viewModel.openResource(
-                    ResourceType.Asset(R.raw.lorem_ipsum)
+                    DocumentResource.Asset(R.raw.lorem_ipsum)
                 )
             }
             Row(
@@ -218,17 +236,52 @@ class MainActivity : ComponentActivity() {
         Box(
             contentAlignment = Alignment.TopStart
         ) {
-            VerticalPDFReader(
+            val offsetY by remember {
+                derivedStateOf { pdfState.zoomState.offsetY }
+            }
+
+            LazyPdfPageColumn(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
                 state = pdfState,
                 modifier = Modifier
                     .fillMaxSize()
                     .background(color = Color.Gray)
-            )
+            ) {
+                pages { _, content ->
+                    when (content) {
+                        is PageContent.Content -> {
+                            val painter = rememberAsyncImagePainter(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(content.bitmap)
+                                    .crossfade(true)
+                                    .build(),
+                            )
+                            Image(
+                                painter = painter,
+                                contentDescription = content.contentDescription,
+                                contentScale = ContentScale.FillWidth,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .aspectRatio(content.bitmap.width / content.bitmap.height.toFloat())
+                                    .fillParentMaxWidth()
+                            )
+                        }
+                        is PageContent.Blank -> BlackPage(
+                            width = content.width,
+                            height = content.height
+                        )
+                    }
+                }
+            }
+
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
+                val progress by rememberUpdatedState((pdfState.status as? ResultStatus.Loading)?.progress ?: 0f)
                 LinearProgressIndicator(
-                    progress = pdfState.loadPercent / 100f,
+                    progress = progress / 100f,
                     color = Color.Red,
                     backgroundColor = Color.Green,
                     modifier = Modifier.fillMaxWidth()
@@ -244,8 +297,40 @@ class MainActivity : ComponentActivity() {
                             ),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+
+                        SideEffect {
+                            val offsets = pdfState.lazyState.layoutInfo.visibleItemsInfo.mapIndexed { index, it ->
+                                index to it.offset
+                            }.joinToString(", ") { "${it.first}: ${it.second}" }
+                            println("[X] offsets: $offsets")
+                        }
+
+                        val p by remember {
+                            derivedStateOf { pdfState.currentPage }
+                        }
                         Text(
-                            text = "Page: ${pdfState.currentPage}/${pdfState.pdfPageCount}",
+                            text = "Page: $p/${pdfState.pageCount}",
+                            modifier = Modifier.padding(
+                                start = 8.dp,
+                                end = 8.dp,
+                                bottom = 4.dp,
+                                top = 8.dp
+                            )
+                        )
+
+                        Text(text = "Offset: ${pdfState.zoomState.offsetX} ${pdfState.zoomState.offsetY}", fontSize = 22.sp)
+//                        Text(
+//                            text = "Offset X: ${pdfState._offsetX.asState().value}",
+//                            modifier = Modifier.padding(
+//                                start = 8.dp,
+//                                end = 8.dp,
+//                                bottom = 4.dp,
+//                                top = 8.dp
+//                            )
+//                        )
+
+                        Text(
+                            text = "Offset Y: $offsetY",
                             modifier = Modifier.padding(
                                 start = 8.dp,
                                 end = 8.dp,
@@ -274,11 +359,15 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            LaunchedEffect(key1 = pdfState.error) {
-                pdfState.error?.let {
-                    scaffoldState.snackbarHostState.showSnackbar(
-                        message = it.message ?: "Error"
-                    )
+            LaunchedEffect(key1 = pdfState.status) {
+
+                val status = pdfState.status
+                if (status is ResultStatus.Error) {
+                    status.throwable.let {
+                        scaffoldState.snackbarHostState.showSnackbar(
+                            message = it.message ?: "Error"
+                        )
+                    }
                 }
             }
         }
@@ -292,70 +381,70 @@ class MainActivity : ComponentActivity() {
         Box(
             contentAlignment = Alignment.TopStart
         ) {
-            HorizontalPDFReader(
-                state = pdfState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(color = Color.Gray)
-            )
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                LinearProgressIndicator(
-                    progress = pdfState.loadPercent / 100f,
-                    color = Color.Red,
-                    backgroundColor = Color.Green,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Row {
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(
-                        modifier = Modifier
-                            .background(
-                                color = MaterialTheme.colors.surface.copy(alpha = 0.5f),
-                                shape = MaterialTheme.shapes.medium
-                            ),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Page: ${pdfState.currentPage}/${pdfState.pdfPageCount}",
-                            modifier = Modifier.padding(
-                                start = 8.dp,
-                                end = 8.dp,
-                                bottom = 4.dp,
-                                top = 8.dp
-                            )
-                        )
-                        Text(
-                            text = if (pdfState.isScrolling) {
-                                "Scrolling"
-                            } else {
-                                "Stationary"
-                            },
-                            color = if (pdfState.isScrolling) {
-                                MaterialTheme.colors.onSurface
-                            } else {
-                                MaterialTheme.colors.error
-                            },
-                            modifier = Modifier.padding(
-                                start = 8.dp,
-                                end = 8.dp,
-                                bottom = 8.dp,
-                                top = 4.dp
-                            )
-                        )
-                        Text(text = "${pdfState.scale}")
-                    }
-                }
-            }
-            LaunchedEffect(key1 = pdfState.error) {
-                pdfState.error?.let {
-                    scaffoldState.snackbarHostState.showSnackbar(
-                        message = it.message ?: "Error"
-                    )
-                }
-            }
+//            HorizontalPDFReader(
+//                state = pdfState,
+//                modifier = Modifier
+//                    .fillMaxSize()
+//                    .background(color = Color.Gray)
+//            )
+//            Column(
+//                modifier = Modifier.fillMaxWidth()
+//            ) {
+//                LinearProgressIndicator(
+//                    progress = pdfState.loadPercent / 100f,
+//                    color = Color.Red,
+//                    backgroundColor = Color.Green,
+//                    modifier = Modifier.fillMaxWidth()
+//                )
+//                Spacer(modifier = Modifier.height(16.dp))
+//                Row {
+//                    Spacer(modifier = Modifier.width(16.dp))
+//                    Column(
+//                        modifier = Modifier
+//                            .background(
+//                                color = MaterialTheme.colors.surface.copy(alpha = 0.5f),
+//                                shape = MaterialTheme.shapes.medium
+//                            ),
+//                        horizontalAlignment = Alignment.CenterHorizontally
+//                    ) {
+//                        Text(
+//                            text = "Page: ${pdfState.currentPage}/${pdfState.pageCount}",
+//                            modifier = Modifier.padding(
+//                                start = 8.dp,
+//                                end = 8.dp,
+//                                bottom = 4.dp,
+//                                top = 8.dp
+//                            )
+//                        )
+//                        Text(
+//                            text = if (pdfState.isScrolling) {
+//                                "Scrolling"
+//                            } else {
+//                                "Stationary"
+//                            },
+//                            color = if (pdfState.isScrolling) {
+//                                MaterialTheme.colors.onSurface
+//                            } else {
+//                                MaterialTheme.colors.error
+//                            },
+//                            modifier = Modifier.padding(
+//                                start = 8.dp,
+//                                end = 8.dp,
+//                                bottom = 8.dp,
+//                                top = 4.dp
+//                            )
+//                        )
+//                        Text(text = "${pdfState.scale}")
+//                    }
+//                }
+//            }
+//            LaunchedEffect(key1 = pdfState.throwable) {
+//                pdfState.throwable?.let {
+//                    scaffoldState.snackbarHostState.showSnackbar(
+//                        message = it.message ?: "Error"
+//                    )
+//                }
+//            }
         }
     }
 
@@ -370,7 +459,7 @@ class MainActivity : ComponentActivity() {
     private fun openDocument(documentUri: Uri) {
         documentUri.path?.let {
             viewModel.openResource(
-                ResourceType.Local(
+                DocumentResource.Local(
                     documentUri
                 )
             )

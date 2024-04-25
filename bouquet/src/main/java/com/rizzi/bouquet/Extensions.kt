@@ -3,27 +3,30 @@ package com.rizzi.bouquet
 import android.content.Context
 import android.net.Uri
 import android.util.Base64
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
-import androidx.compose.ui.Modifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.util.*
 
-internal suspend fun Context.base64ToPdf(
-    yourBase64String: String?,
-    cacheFileName: String = generateFileName()
+internal suspend fun Context.cacheBase64AsPdfFile(
+    base64: String,
+    cacheFileName: String,
+) = cacheBase64AsPdfFile(
+    Base64.decode(base64, Base64.DEFAULT),
+    cacheFileName
+)
+
+internal suspend fun Context.cacheBase64AsPdfFile(
+    base64: ByteArray,
+    cacheFileName: String
 ): File {
     val file = File(cacheDir, cacheFileName)
-    yourBase64String?.let {
-        with(FileOutputStream(file, false)) {
-            withContext(Dispatchers.IO) {
-                write(Base64.decode(yourBase64String, Base64.DEFAULT))
-                flush()
-                close()
-            }
+    with(FileOutputStream(file, false)) {
+        withContext(Dispatchers.IO) {
+            write(base64)
+            flush()
+            close()
         }
     }
     return file
@@ -47,10 +50,8 @@ internal suspend fun Context.uriToFile(
     return file
 }
 
-internal fun generateFileName(): String {
-    return "${Date().time}.pdf"
+internal fun generateFileName(name: String = Date().time.toString()): String {
+    return "$name.pdf"
 }
 
-internal fun Modifier.size(
-    dimension: Dimension
-): Modifier = height(dimension.height).width(dimension.width)
+

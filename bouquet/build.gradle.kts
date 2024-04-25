@@ -45,12 +45,12 @@ afterEvaluate {
         publications {
             create<MavenPublication>("release") {
                 from(components["release"])
-                groupId = "io.rektplorer64.pdfkt"
+                groupId = "com.rizzi.composepdf"
                 artifactId = "core"
                 version = "0.1.0"
 
                 // Make sure the AAR file is included as an artifact
-                artifact("$buildDir/outputs/aar/${project.name}-release.aar")
+                // artifact("$buildDir/outputs/aar/${project.name}-release.aar")
             }
         }
 

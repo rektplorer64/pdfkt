@@ -13,6 +13,7 @@ import com.rizzi.bouquet.compose.state.ResultStatus
 import com.rizzi.bouquet.compose.state.VerticalPdfReaderState
 import com.rizzi.bouquet.getTextByPage
 import com.rizzi.bouquet.loader.DocumentLoader
+import com.rizzi.bouquet.loader.DocumentRequest
 import com.rizzi.bouquet.loader.DocumentResult
 import kotlinx.coroutines.launch
 
@@ -27,7 +28,34 @@ fun DocumentReaderDisposableEffect(
 
     DisposableEffect(Unit) {
         coroutineScope.launch {
-            when (val result = documentLoader.execute(state.request)) {
+            val existingListener = state.request.listener
+            val request = state.request.copy(
+                listener = object : DocumentRequest.Listener {
+                    override fun onStart(request: DocumentRequest) {
+                        state.status = ResultStatus.Loading(progress = 0f)
+                        existingListener?.onStart(request)
+                    }
+
+                    override fun onLoading(request: DocumentRequest, progress: Float) {
+                        state.status = ResultStatus.Loading(progress = progress)
+                        existingListener?.onLoading(request, progress)
+                    }
+
+                    override fun onSuccess(request: DocumentRequest, result: DocumentResult) {
+                        existingListener?.onSuccess(request, result)
+                    }
+
+                    override fun onCancel(request: DocumentRequest) {
+                        existingListener?.onCancel(request)
+                    }
+
+                    override fun onFailure(request: DocumentRequest, result: DocumentResult) {
+                        existingListener?.onFailure(request, result)
+                    }
+
+                }
+            )
+            when (val result = documentLoader.execute(request)) {
                 is DocumentResult.Error -> {
                     state.status = ResultStatus.Error(null, result.throwable)
                 }

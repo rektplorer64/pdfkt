@@ -88,6 +88,7 @@ fun LazyPdfPageColumn(
     horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
     flingBehavior: FlingBehavior = ScrollableDefaults.flingBehavior(),
     userScrollEnabled: Boolean = true,
+    documentLoader: DocumentLoader? = null,
     content: LazyReaderListScope.() -> Unit
 ) {
     BoxWithConstraints(
@@ -98,31 +99,7 @@ fun LazyPdfPageColumn(
         DocumentReaderDisposableEffect(
             state = state,
             documentLoader = remember {
-                DocumentLoader
-                    .Builder(context)
-                    .eventListener(
-                        object : EventListener {
-                            override fun onStart(request: DocumentRequest) {
-                                state.status = ResultStatus.Loading(progress = 0f)
-                            }
-
-                            override fun onLoading(request: DocumentRequest, progress: Float) {
-                                state.status = ResultStatus.Loading(progress = progress)
-                            }
-
-                            override fun onSuccess(request: DocumentRequest) {
-
-                            }
-
-                            override fun onCancel(request: DocumentRequest) {
-                            }
-
-                            override fun onFailure(request: DocumentRequest, throwable: Throwable) {
-
-                            }
-                        }
-                    )
-                    .build()
+                documentLoader ?: DocumentLoader.Builder(context).build()
             },
             viewportSize = IntSize(
                 constraints.maxWidth,

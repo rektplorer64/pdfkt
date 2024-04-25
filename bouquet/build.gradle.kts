@@ -40,6 +40,30 @@ android {
     }
 }
 
+afterEvaluate {
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                from(components["release"])
+                groupId = "io.rektplorer64.pdfkt"
+                artifactId = "core"
+                version = "0.1.0"
+
+                // Make sure the AAR file is included as an artifact
+                artifact("$buildDir/outputs/aar/${project.name}-release.aar")
+            }
+        }
+
+        repositories {
+            maven {
+                name = "jitpack"
+                url = uri("https://jitpack.io")
+            }
+        }
+    }
+}
+
+
 dependencies {
     implementation("androidx.compose.ui:ui:1.6.6")
     implementation("androidx.compose.material:material:1.6.6")

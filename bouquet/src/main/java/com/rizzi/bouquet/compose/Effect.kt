@@ -26,7 +26,7 @@ fun DocumentReaderDisposableEffect(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    DisposableEffect(Unit) {
+    DisposableEffect(state.refresher) {
         coroutineScope.launch {
             val existingListener = state.request.listener
             val request = state.request.copy(

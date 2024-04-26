@@ -7,9 +7,11 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.unit.center
+import androidx.compose.ui.util.fastFilter
 import androidx.compose.ui.util.fastLastOrNull
 import androidx.core.net.toUri
 import com.rizzi.bouquet.DocumentResource
+import com.rizzi.bouquet.compose.DOCUMENT_PAGE_CONTENT_TYPE
 import com.rizzi.bouquet.loader.DocumentRequest
 
 val LazyListLayoutInfo.viewportCenterYPx: Float
@@ -36,43 +38,25 @@ class VerticalPdfReaderState(
         private set
 
     override val currentPage: Int
-        get() = currentPage2()
+        get() = currentPage()
 
     override val isScrolling: Boolean
         get() = lazyState.isScrollInProgress
 
-    private fun currentPage2(): Int {
+    private fun currentPage(): Int {
         return renderer?.let { pdfRender ->
             with(lazyState) {
                 val finalMiddleOfTheScreen = relativeViewportCenterY()
-                layoutInfo.visibleItemsInfo
+
+                val currentPageVisibleItem = layoutInfo.visibleItemsInfo
+                    .fastFilter { it.contentType == DOCUMENT_PAGE_CONTENT_TYPE }
                     .takeIf { it.isNotEmpty() }
                     ?.fastLastOrNull { it.offset <= finalMiddleOfTheScreen }
-                    ?.index?.plus(1)
+
+                // We can treat key as pageNo because it is specified as LazyReaderListScope.pages and LazyReaderListScope.pagesIndexed
+                val pageNumber = (currentPageVisibleItem?.key as? Int) ?: currentPageVisibleItem?.index
+                pageNumber?.plus(1)
             }
-        } ?: 0
-    }
-
-    private fun currentPage(): Int {
-        return renderer?.let { pdfRender ->
-            val currentMinIndex = lazyState.firstVisibleItemIndex
-            var lastVisibleIndex = currentMinIndex
-
-            val minIndexHeight = pdfRender.pageLists[currentMinIndex].dimension.height * zoomState.scale
-            var totalVisiblePortion = minIndexHeight - lazyState.firstVisibleItemScrollOffset
-
-            for (i in currentMinIndex + 1 until pageCount) {
-                val pageHeight = pdfRender.pageLists[i].dimension.height * zoomState.scale
-
-                val newTotalVisiblePortion = totalVisiblePortion + pageHeight
-                if (newTotalVisiblePortion <= pdfRender.viewportSize.height) {
-                    lastVisibleIndex = i
-                    totalVisiblePortion = newTotalVisiblePortion
-                } else {
-                    break
-                }
-            }
-            lastVisibleIndex + 1
         } ?: 0
     }
 

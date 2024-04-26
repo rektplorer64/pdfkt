@@ -1,6 +1,7 @@
 package com.rizzi.bouquet.compose.state
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.rizzi.bouquet.PdfDocumentRenderer
@@ -33,9 +34,17 @@ abstract class PdfReaderState(
     val pageCount: Int
         get() = renderer?.pageCount ?: 0
 
+    internal var refresher by mutableIntStateOf(0)
+        private set
+
     abstract val currentPage: Int
 
     abstract val isScrolling: Boolean
+
+    fun refresh() {
+        close()
+        refresher++
+    }
 
     fun close() {
         renderer?.close()

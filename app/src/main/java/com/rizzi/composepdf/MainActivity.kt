@@ -11,9 +11,34 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.*
+import androidx.compose.material.Button
+import androidx.compose.material.Card
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.FloatingActionButton
+import androidx.compose.material.Icon
+import androidx.compose.material.LinearProgressIndicator
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Scaffold
+import androidx.compose.material.ScaffoldState
+import androidx.compose.material.Surface
+import androidx.compose.material.Switch
+import androidx.compose.material.SwitchDefaults
+import androidx.compose.material.Text
+import androidx.compose.material.TopAppBar
+import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -36,7 +61,8 @@ import androidx.core.app.ShareCompat
 import androidx.core.content.FileProvider
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
-import com.rizzi.bouquet.*
+import com.rizzi.bouquet.DocumentResource
+import com.rizzi.bouquet.PageContent
 import com.rizzi.bouquet.compose.BlackPage
 import com.rizzi.bouquet.compose.LazyPdfPageColumn
 import com.rizzi.bouquet.compose.pages
@@ -249,29 +275,37 @@ class MainActivity : ComponentActivity() {
                     .fillMaxSize()
                     .background(color = Color.Gray)
             ) {
-                pages { _, content ->
-                    when (content) {
-                        is PageContent.Content -> {
-                            val painter = rememberAsyncImagePainter(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(content.bitmap)
-                                    .crossfade(true)
-                                    .build(),
-                            )
-                            Image(
-                                painter = painter,
-                                contentDescription = content.contentDescription,
-                                contentScale = ContentScale.FillWidth,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .aspectRatio(content.bitmap.width / content.bitmap.height.toFloat())
-                                    .fillParentMaxWidth()
+                item {
+                    Button(onClick = { pdfState.refresh() }) {
+                        Text("Refresh")
+                    }
+                }
+
+                pdfState.renderer?.let {
+                    pages(it) { _, content ->
+                        when (content) {
+                            is PageContent.Content -> {
+                                val painter = rememberAsyncImagePainter(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(content.bitmap)
+                                        .crossfade(true)
+                                        .build(),
+                                )
+                                Image(
+                                    painter = painter,
+                                    contentDescription = content.contentDescription,
+                                    contentScale = ContentScale.FillWidth,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .aspectRatio(content.bitmap.width / content.bitmap.height.toFloat())
+                                        .fillParentMaxWidth()
+                                )
+                            }
+                            is PageContent.Blank -> BlackPage(
+                                width = content.width,
+                                height = content.height
                             )
                         }
-                        is PageContent.Blank -> BlackPage(
-                            width = content.width,
-                            height = content.height
-                        )
                     }
                 }
             }

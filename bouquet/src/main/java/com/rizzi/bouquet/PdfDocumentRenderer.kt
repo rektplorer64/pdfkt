@@ -41,7 +41,7 @@ class PdfDocumentRenderer internal constructor(
         )
     }
 
-    fun close() {
+    internal fun close() {
         coroutineScope.launch {
             pageLists.forEach {
                 it.job?.cancelAndJoin()

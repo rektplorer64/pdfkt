@@ -1,5 +1,8 @@
 package com.rizzi.bouquet.compose
 
+import android.os.Parcel
+import android.os.Parcelable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.ScrollableDefaults
@@ -14,6 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.layout.IntervalList
+import androidx.compose.foundation.lazy.layout.LazyLayoutIntervalContent
 import androidx.compose.material.Divider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -42,40 +47,53 @@ import com.rizzi.bouquet.compose.state.relativeViewportCenterY
 
 
 const val SHOW_CURRENT_PAGE_THRESHOLD_LINES = false
+const val DOCUMENT_PAGE_CONTENT_TYPE = "com.rizzi.bouquet.compose.document"
+
+typealias LazyReaderListScope = LazyListScope
 
 fun LazyReaderListScope.pages(
+    renderer: PdfDocumentRenderer,
     itemContent: @Composable LazyItemScope.(index: Int, item: PageContent) -> Unit
-) = items(
-    count = renderer.pageCount,
-    key = { i -> renderer.pageLists[i].index }
-) { i ->
-    val pageContent by this@pages.renderer.pageLists[i].stateFlow.collectAsState()
+) {
+//    requireNotNull(renderer) {
+//        "VerticalPdfReaderState.renderer must be initialized (non-null) before rendering pages!"
+//    }
 
-    PageRecyclingEffects(
-        renderer = this@pages.renderer,
-        pageIndex = i
-    )
+    items(
+        count = renderer.pageCount,
+        key = { i -> renderer.pageLists[i].index },
+        contentType = { DOCUMENT_PAGE_CONTENT_TYPE }
+    ) { i ->
+        val pageContent by renderer.pageLists[i].stateFlow.collectAsState()
 
-    itemContent(i, pageContent)
+        PageRecyclingEffects(
+            renderer = renderer,
+            pageIndex = i
+        )
+
+        itemContent(i, pageContent)
+    }
 }
 
 fun LazyReaderListScope.pagesIndexed(
+    renderer: PdfDocumentRenderer,
     itemContent: @Composable LazyItemScope.(index: Int, item: PageContent) -> Unit
-) = items(
-    count = renderer.pageCount,
-    key = { i -> renderer.pageLists[i].index }
-) { i ->
-    val pageContent by this@pagesIndexed.renderer.pageLists[i].stateFlow.collectAsState()
+) {
+    items(
+        count = renderer.pageCount,
+        key = { i -> renderer.pageLists[i].index },
+        contentType = { DOCUMENT_PAGE_CONTENT_TYPE }
+    ) { i ->
+        val pageContent by renderer.pageLists[i].stateFlow.collectAsState()
 
-    PageRecyclingEffects(
-        renderer = this@pagesIndexed.renderer,
-        pageIndex = i
-    )
+        PageRecyclingEffects(
+            renderer = renderer,
+            pageIndex = i
+        )
 
-    itemContent(i, pageContent)
+        itemContent(i, pageContent)
+    }
 }
-
-class LazyReaderListScope internal constructor(scope: LazyListScope, internal val renderer: PdfDocumentRenderer) : LazyListScope by scope
 
 @Composable
 fun LazyPdfPageColumn(
@@ -118,51 +136,8 @@ fun LazyPdfPageColumn(
                     verticalArrangement = verticalArrangement,
                     flingBehavior = flingBehavior,
                     userScrollEnabled = userScrollEnabled,
-                ) {
-                    val scope = LazyReaderListScope(
-                        scope = this,
-                        renderer = renderer
-                    )
-                    scope.content()
-
-//                    items(
-//                        count = renderer.pageCount,
-//                        key = { renderer.pageLists[it].index }
-//                    ) {
-//                        val pageContent by renderer.pageLists[it].stateFlow.collectAsState()
-//
-//                        PageRecyclingEffects(
-//                            renderer = renderer,
-//                            pageIndex = it
-//                        )
-//
-//                        when (val content = pageContent) {
-//                            is PageContentInt.PageContent -> {
-//                                val painter = rememberAsyncImagePainter(
-//                                    model = ImageRequest.Builder(LocalContext.current)
-//                                        .data(content.bitmap)
-//                                        .crossfade(true)
-//                                        .build(),
-//                                )
-//
-//                                Image(
-//                                    painter = painter,
-//                                    contentDescription = content.contentDescription,
-//                                    contentScale = ContentScale.FillWidth,
-//                                    modifier = Modifier
-//                                        .clip(RoundedCornerShape(4.dp))
-//                                        .aspectRatio(content.bitmap.width / content.bitmap.height.toFloat())
-//                                        .fillParentMaxWidth()
-//                                )
-//                            }
-//
-//                            is PageContentInt.BlankPage -> BlackPage(
-//                                width = content.width,
-//                                height = content.height
-//                            )
-//                        }
-//                    }
-                }
+                    content = content
+                )
 
                 if (SHOW_CURRENT_PAGE_THRESHOLD_LINES) {
                     val absoluteCenterY by remember {

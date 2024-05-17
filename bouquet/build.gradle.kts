@@ -46,6 +46,12 @@ android {
     }
 }
 
+// Task to bundle the source code into a jar
+tasks.register<Jar>("sourceJar") {
+    archiveClassifier.set("sources")
+    from(android.sourceSets.getByName("main").java.srcDirs)
+}
+
 afterEvaluate {
     publishing {
         publications {
@@ -57,6 +63,9 @@ afterEvaluate {
 
                 // Make sure the AAR file is included as an artifact
                 // artifact("$buildDir/outputs/aar/${project.name}-release.aar")
+
+                // Include the source code artifact
+                artifact(tasks["sourceJar"])
             }
         }
 

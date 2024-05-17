@@ -49,8 +49,8 @@ android {
 afterEvaluate {
     publishing {
         publications {
-            create<MavenPublication>("release") {
-                from(components["release"])
+            create<MavenPublication>("debug") {
+                from(components["debug"])
                 groupId = "com.rizzi.composepdf"
                 artifactId = "core"
                 version = "0.1.0"

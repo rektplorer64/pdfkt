@@ -44,6 +44,7 @@ abstract class PdfReaderState(
     fun refresh() {
         close()
         refresher++
+        status = ResultStatus.Loading(progress = 0f)
     }
 
     fun close() {

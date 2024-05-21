@@ -19,3 +19,11 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Keep the JP2Decoder class which is required by JPXFilter
+-keep class com.gemalto.jp2.JP2Decoder { *; }
+
+# Keep the JPXFilter class methods that reference JP2Decoder
+-keep class com.tom_roush.pdfbox.filter.JPXFilter {
+    android.graphics.Bitmap readJPX(java.io.InputStream, com.tom_roush.pdfbox.filter.DecodeOptions, com.tom_roush.pdfbox.filter.DecodeResult);
+}

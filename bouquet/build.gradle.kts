@@ -55,8 +55,8 @@ tasks.register<Jar>("sourceJar") {
 afterEvaluate {
     publishing {
         publications {
-            create<MavenPublication>("debug") {
-                from(components["debug"])
+            create<MavenPublication>("release") {
+                from(components["release"])
                 groupId = "com.rizzi.composepdf"
                 artifactId = "core"
                 version = "0.1.0"

@@ -18,7 +18,7 @@ import com.rizzi.bouquet.loader.ExecutionListener
 import kotlinx.coroutines.launch
 
 @Composable
-fun DocumentReaderDisposableEffect(
+internal fun DocumentReaderDisposableEffect(
     state: PdfReaderState,
     documentLoader: DocumentLoader,
     viewportSize: IntSize
@@ -53,22 +53,28 @@ fun DocumentReaderDisposableEffect(
                         getTextByPage(context, result.fileDescriptor)
                     } else emptyList()
 
-                    state.onStatusUpdate(
-                        ResultStatus.Success(
-                            RenderingComponent(
-                                file = result.file,
-                                renderer = PdfDocumentRenderer(
-                                    fileDescriptor = result.fileDescriptor,
-                                    textForEachPage = accessibilityTextList,
-                                    viewportSize = viewportSize,
-                                    orientation = if (state is LazyListPdfReaderState) {
-                                        Orientation.Vertical
-                                    } else {
-                                        Orientation.Horizontal
-                                    }
-                                )
+                    val renderingComponent = runCatching {
+                        RenderingComponent(
+                            file = result.file,
+                            renderer = PdfDocumentRenderer(
+                                fileDescriptor = result.fileDescriptor,
+                                textForEachPage = accessibilityTextList,
+                                viewportSize = viewportSize,
+                                orientation = if (state is LazyListPdfReaderState) {
+                                    Orientation.Vertical
+                                } else {
+                                    Orientation.Horizontal
+                                }
                             )
                         )
+                    }.onFailure {
+                        state.onStatusUpdate(
+                            ResultStatus.Error(data = null, it)
+                        )
+                    }.getOrNull() ?: return@launch
+
+                    state.onStatusUpdate(
+                        ResultStatus.Success(renderingComponent)
                     )
                 }
             }

@@ -6,13 +6,13 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.debugInspectorInfo
 import androidx.compose.ui.unit.Constraints
-import com.rizzi.bouquet.compose.state.VerticalPdfReaderState
+import com.rizzi.bouquet.compose.state.LazyListPdfReaderState
 import kotlinx.coroutines.launch
 import net.engawapg.lib.zoomable.ScrollGesturePropagation
 import net.engawapg.lib.zoomable.zoomable
 
-fun Modifier.readerGesture(
-    state: VerticalPdfReaderState,
+internal fun Modifier.readerGesture(
+    state: LazyListPdfReaderState,
     constraints: Constraints
 ): Modifier = composed(
     inspectorInfo = debugInspectorInfo {

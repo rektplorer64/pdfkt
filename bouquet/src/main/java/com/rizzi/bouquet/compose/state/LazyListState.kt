@@ -34,13 +34,13 @@ class LazyListPdfReaderState(
     documentLoader: DocumentLoader,
     lazyListState: LazyListState = LazyListState(),
     zoomEnabled: Boolean = false,
-    isAccessibleEnable: Boolean = false,
+    accessibilityEnabled: Boolean = false,
     onStatusChange: StatusChangeCallback? = null,
 ) : PdfReaderState(
     request = request,
     documentLoader = documentLoader,
     zoomEnabled = zoomEnabled,
-    isAccessibleEnable = isAccessibleEnable,
+    accessibilityEnabled = accessibilityEnabled,
     onStatusChange = onStatusChange
 ) {
 
@@ -96,7 +96,7 @@ fun rememberLazyListPdfReaderState(
             documentLoader = params.documentLoader,
             lazyListState = lazyListState,
             zoomEnabled = zoomEnabled,
-            isAccessibleEnable = accessibleEnabled,
+            accessibilityEnabled = accessibleEnabled,
             onStatusChange = onStatusChange,
         )
     }.apply {

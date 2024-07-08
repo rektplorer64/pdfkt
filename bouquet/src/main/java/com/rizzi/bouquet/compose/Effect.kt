@@ -49,7 +49,7 @@ fun DocumentReaderDisposableEffect(
                 }
 
                 is DocumentResult.Success -> {
-                    val accessibilityTextList = if (state.isAccessibleEnable) {
+                    val accessibilityTextList = if (state.accessibilityEnabled) {
                         getTextByPage(context, result.fileDescriptor)
                     } else emptyList()
 

@@ -19,7 +19,7 @@ abstract class PdfReaderState(
     request: DocumentRequest,
     documentLoader: DocumentLoader,
     zoomEnabled: Boolean = false,
-    val isAccessibleEnable: Boolean = false,
+    val accessibilityEnabled: Boolean = false,
     onStatusChange: StatusChangeCallback? = null,
 ) {
 

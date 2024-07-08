@@ -1,9 +1,5 @@
 package com.rizzi.bouquet.compose.state
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.lazy.LazyListLayoutInfo
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerLayoutInfo
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -11,11 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.center
-import androidx.compose.ui.util.fastFilter
 import androidx.compose.ui.util.fastLastOrNull
 import coil.compose.DefaultModelEqualityDelegate
 import coil.compose.EqualityDelegate
-import com.rizzi.bouquet.compose.DOCUMENT_PAGE_CONTENT_TYPE
 import com.rizzi.bouquet.loader.DocumentLoader
 import com.rizzi.bouquet.loader.DocumentRequest
 
@@ -38,13 +32,13 @@ class PagerPdfReaderState(
     request: DocumentRequest,
     documentLoader: DocumentLoader,
     zoomEnabled: Boolean = false,
-    isAccessibleEnable: Boolean = false,
+    accessibilityEnabled: Boolean = false,
     onStatusChange: StatusChangeCallback? = null,
 ) : PdfReaderState(
     request = request,
     documentLoader = documentLoader,
     zoomEnabled = zoomEnabled,
-    isAccessibleEnable = isAccessibleEnable,
+    accessibilityEnabled = accessibilityEnabled,
     onStatusChange = onStatusChange
 ) {
 
@@ -98,7 +92,7 @@ fun rememberViewPagerPdfReaderState(
             request = request,
             documentLoader = params.documentLoader,
             zoomEnabled = zoomEnabled,
-            isAccessibleEnable = accessibleEnabled,
+            accessibilityEnabled = accessibleEnabled,
             onStatusChange = onStatusChange,
         )
     }.apply {

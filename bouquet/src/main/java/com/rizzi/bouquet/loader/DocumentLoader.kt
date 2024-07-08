@@ -93,6 +93,10 @@ class RealDocumentLoader(
             runCatching {
                 when (val res = request.type) {
                     is DocumentResource.Local -> {
+                        requireNotNull(res.uri) {
+                            "Local file URI cannot be null"
+                        }
+
                         val descriptor = applicationContext.contentResolver
                             .openFileDescriptor(res.uri, "r")
                             ?: throw IOException("File not found")

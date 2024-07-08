@@ -7,7 +7,7 @@ import kotlinx.parcelize.Parcelize
 
 sealed class DocumentResource {
     @Parcelize
-    data class Local(val uri: Uri) : DocumentResource(), Parcelable
+    data class Local(val uri: Uri?) : DocumentResource(), Parcelable
 
     @Parcelize
     data class Remote(

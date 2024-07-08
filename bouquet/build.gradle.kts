@@ -72,7 +72,8 @@ afterEvaluate {
                 // artifact("$buildDir/outputs/aar/${project.name}-release.aar")
 
                 // Include the source code artifact
-                artifact(tasks["sourceJar"])
+                // commented due to an error: Invalid publication 'release': multiple artifacts with the identical extension and classifier ('jar', 'sources').
+                // artifact(tasks["sourceJar"])
             }
         }
 

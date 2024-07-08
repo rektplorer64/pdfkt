@@ -21,6 +21,10 @@ internal suspend fun Context.cacheBase64AsPdfFile(
     base64: ByteArray,
     cacheFileName: String
 ): File {
+    if (base64.isEmpty()) {
+        throw IllegalArgumentException("Base64 cannot be left empty")
+    }
+
     val file = File(cacheDir, cacheFileName)
     with(FileOutputStream(file, false)) {
         withContext(Dispatchers.IO) {

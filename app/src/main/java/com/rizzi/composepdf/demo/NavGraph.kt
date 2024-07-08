@@ -44,16 +44,7 @@ fun NavGraphBuilder.includeDemoRoutes(navController: NavController) {
     composable<Screens.LocalFile>(typeMap = typeMap) {
         val arguments = it.toRoute<Screens.LocalFile>()
 
-        val state = rememberLazyListPdfReaderState(
-            request = DocumentRequest(DocumentResource.Base64(stringResource(R.string.base64_pdf)))
-        )
-
-//                    Base64PdfViewerScreen(
-//                        state = state,
-//                        title = ,
-//                        onBackPress = navController::navigateUp,
-//                        orientation = arguments.orientation
-//                    )
+        LocalFilePdfViewerScreen(onBackPress = navController::navigateUp)
     }
 
     composable<Screens.RemoteUrl>(typeMap = typeMap) {
@@ -62,13 +53,5 @@ fun NavGraphBuilder.includeDemoRoutes(navController: NavController) {
         RemoteUrlPdfViewerScreen(
             onBackPress = navController::navigateUp
         )
-
-//        Base64PdfViewerScreen(
-//            state = state,
-//            title = { Text("Base64") },
-//            onBackPress = navController::navigateUp,
-//            orientation = arguments.orientation
-//        )
     }
-
 }

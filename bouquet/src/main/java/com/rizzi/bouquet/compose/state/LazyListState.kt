@@ -1,12 +1,8 @@
 package com.rizzi.bouquet.compose.state
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerLayoutInfo
-import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -19,24 +15,24 @@ import com.rizzi.bouquet.compose.DOCUMENT_PAGE_CONTENT_TYPE
 import com.rizzi.bouquet.loader.DocumentLoader
 import com.rizzi.bouquet.loader.DocumentRequest
 
-
-internal val PagerLayoutInfo.viewportCenterYPx: Float
+internal val LazyListLayoutInfo.viewportCenterYPx: Float
     get() = viewportSize.center.y.toFloat()
 
-internal fun PagerPdfReaderState.absoluteViewportCenterY(): Float {
-    return pagerState?.layoutInfo?.viewportCenterYPx ?: return 0f
+internal fun LazyListPdfReaderState.absoluteViewportCenterY(): Float {
+    return lazyState.layoutInfo.viewportCenterYPx
 }
 
-internal fun PagerPdfReaderState.relativeViewportCenterY(): Float {
-    val middleOfTheScreen = pagerState?.layoutInfo?.viewportCenterYPx ?: return 0f
+internal fun LazyListPdfReaderState.relativeViewportCenterY(): Float {
+    val middleOfTheScreen = lazyState.layoutInfo.viewportCenterYPx
     val finalMiddleOfTheScreen = middleOfTheScreen - (zoomState.offsetY / zoomState.scale)
 
     return finalMiddleOfTheScreen
 }
 
-class PagerPdfReaderState(
+class LazyListPdfReaderState(
     request: DocumentRequest,
     documentLoader: DocumentLoader,
+    lazyListState: LazyListState = LazyListState(),
     zoomEnabled: Boolean = false,
     isAccessibleEnable: Boolean = false,
     onStatusChange: StatusChangeCallback? = null,
@@ -48,22 +44,22 @@ class PagerPdfReaderState(
     onStatusChange = onStatusChange
 ) {
 
-    var pagerState: PagerState? = null
-        internal set
+    var lazyState: LazyListState = lazyListState
+        private set
 
     override val currentPage: Int
         get() = currentPage()
 
     override val isScrolling: Boolean
-        get() = pagerState?.isScrollInProgress == true
+        get() = lazyState.isScrollInProgress
 
     private fun currentPage(): Int {
         return renderer?.let { _ ->
-            with(pagerState ?: return@let null) {
+            with(lazyState) {
                 val finalMiddleOfTheScreen = relativeViewportCenterY()
 
-                val currentPageVisibleItem = layoutInfo.visiblePagesInfo
-//                    .fastFilter { it.contentType == DOCUMENT_PAGE_CONTENT_TYPE }
+                val currentPageVisibleItem = layoutInfo.visibleItemsInfo
+                    .fastFilter { it.contentType == DOCUMENT_PAGE_CONTENT_TYPE }
                     .takeIf { it.isNotEmpty() }
                     ?.fastLastOrNull { it.offset <= finalMiddleOfTheScreen }
 
@@ -76,8 +72,9 @@ class PagerPdfReaderState(
 }
 
 @Composable
-fun rememberViewPagerPdfReaderState(
+fun rememberLazyListPdfReaderState(
     request: DocumentRequest,
+    lazyListState: LazyListState = rememberLazyListState(),
     documentLoader: DocumentLoader = run {
         val context = LocalContext.current
         remember { DocumentLoader.Builder(context).build() }
@@ -86,17 +83,18 @@ fun rememberViewPagerPdfReaderState(
     accessibleEnabled: Boolean = false,
     onStatusChange: StatusChangeCallback? = null,
     requestEqualityDelegate: EqualityDelegate = DefaultModelEqualityDelegate,
-): PagerPdfReaderState {
+): LazyListPdfReaderState {
     val params = PdfReaderStateParams(
         request = request,
         requestEqualityDelegate = requestEqualityDelegate,
         documentLoader = documentLoader
     )
 
-    val state = remember {
-        PagerPdfReaderState(
+    return remember {
+        LazyListPdfReaderState(
             request = request,
             documentLoader = params.documentLoader,
+            lazyListState = lazyListState,
             zoomEnabled = zoomEnabled,
             isAccessibleEnable = accessibleEnabled,
             onStatusChange = onStatusChange,
@@ -106,14 +104,5 @@ fun rememberViewPagerPdfReaderState(
         this.documentLoader = params.documentLoader
         this.request = params.request
     }
-
-    // TODO: Accept other params of rememberPagerState
-    val pagerState = rememberPagerState {
-        state.pageCount
-    }
-
-    state.pagerState = pagerState
-
-    return state
 }
 

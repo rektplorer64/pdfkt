@@ -5,6 +5,7 @@ import android.os.ParcelFileDescriptor
 import com.rizzi.bouquet.DocumentResource
 import com.rizzi.bouquet.cacheBase64AsPdfFile
 import com.rizzi.bouquet.generateFileName
+import com.rizzi.bouquet.loader.EventListener.Factory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,44 +17,19 @@ import okhttp3.internal.toHexString
 import java.io.File
 import java.io.IOException
 
-data class DocumentRequest(
-    val type: DocumentResource,
-    val listener: Listener? = null
-) {
-    interface Listener {
-        fun onStart(request: DocumentRequest)
-        fun onLoading(request: DocumentRequest, progress: Float)
-        fun onSuccess(request: DocumentRequest, result: DocumentResult)
-        fun onCancel(request: DocumentRequest)
-        fun onFailure(request: DocumentRequest, result: DocumentResult)
-    }
-}
-
-sealed class DocumentResult {
-    abstract val request: DocumentRequest
-
-    class Success(
-        override val request: DocumentRequest,
-        val file: File?,
-        val fileDescriptor: ParcelFileDescriptor
-    ) : DocumentResult()
-
-    class Error(
-        override val request: DocumentRequest,
-        val throwable: Throwable
-    ) : DocumentResult()
-}
-
 interface DocumentLoader {
 
-    suspend fun execute(request: DocumentRequest): DocumentResult
+    suspend fun execute(
+        request: DocumentRequest,
+        listener: ExecutionListener?
+    ): DocumentResult
 
     fun buildUpon(): Builder
 
     class Builder {
         private val applicationContext: Context
         private var callFactory: Lazy<Call.Factory>?
-        private var eventListenerFactory: Lazy<EventListener.Factory>?
+        private var eventListenerFactory: Lazy<Factory>?
 
         constructor(context: Context) {
             applicationContext = context.applicationContext
@@ -73,11 +49,11 @@ interface DocumentLoader {
 
         fun eventListener(listener: EventListener) = apply {
             this.eventListenerFactory = lazyOf(
-                EventListener.Factory { listener }
+                Factory { listener }
             )
         }
 
-        fun eventListener(factory: EventListener.Factory) = apply {
+        fun eventListener(factory: Factory) = apply {
             this.eventListenerFactory = lazyOf(factory)
         }
 
@@ -94,7 +70,7 @@ interface DocumentLoader {
 class RealDocumentLoader(
     val applicationContext: Context,
     val callFactoryLazy: Lazy<Call.Factory>?,
-    val eventListenerFactory: Lazy<EventListener.Factory>?
+    val eventListenerFactory: Lazy<Factory>?
 ) : DocumentLoader {
 
     companion object {
@@ -103,13 +79,16 @@ class RealDocumentLoader(
         }
     }
 
-    override suspend fun execute(request: DocumentRequest): DocumentResult =
+    override suspend fun execute(
+        request: DocumentRequest,
+        listener: ExecutionListener?
+    ): DocumentResult =
         withContext(Dispatchers.IO) {
             val eventListener =
-                (eventListenerFactory?.value ?: EventListener.Factory.Empty).create(request)
+                (eventListenerFactory?.value ?: Factory.Empty).create(request)
 
             eventListener.onStart(request)
-            request.listener?.onStart(request)
+            listener?.onStart()
 
             runCatching {
                 when (val res = request.type) {
@@ -143,7 +122,7 @@ class RealDocumentLoader(
 
                                     val progressFinal = progress * (100 / totalBytes.toFloat())
                                     eventListener.onLoading(request, progressFinal)
-                                    request.listener?.onLoading(request, progressFinal)
+                                    listener?.onLoading(progressFinal)
                                 }
                             }
                         }
@@ -205,7 +184,7 @@ class RealDocumentLoader(
 
                                             val progressFinal = downloaded * (100 / totalBytes.toFloat())
                                             eventListener.onLoading(request, progressFinal)
-                                            request.listener?.onLoading(request, progressFinal)
+                                            listener?.onLoading(progressFinal)
                                         }
                                         output.write(data, 0, count)
                                         data = ByteArray(bufferSize)
@@ -234,36 +213,38 @@ class RealDocumentLoader(
                 }
             }
                 .onFailure {
-                    if (it is CancellationException) {
-                        eventListener.onCancel(request)
-                        request.listener?.onCancel(request)
-                        throw it
-                    }
-
-                    eventListener.onFailure(request, it)
-                    return@withContext DocumentResult.Error(
+                    val result =  DocumentResult.Error(
                         request = request,
                         throwable = it
-                    ).also { err ->
-                        request.listener?.onFailure(request, err)
+                    )
+
+                    if (it is CancellationException) {
+                        eventListener.onCancel(request)
+                        listener?.onCancel()
+                    } else {
+                        eventListener.onFailure(request, it)
+                        listener?.onFailure(result)
                     }
+
+                    return@withContext result
                 }
                 .onSuccess { (file, descriptor) ->
-                    eventListener.onSuccess(request)
-                    return@withContext DocumentResult.Success(
+                    val result = DocumentResult.Success(
                         request = request,
                         file = file,
                         fileDescriptor = descriptor
-                    ).also { res ->
-                        request.listener?.onSuccess(request, res)
-                    }
+                    )
+                    eventListener.onSuccess(request)
+                    listener?.onSuccess(result)
+
+                    return@withContext result
                 }
 
             return@withContext DocumentResult.Error(
                 request = request,
                 throwable = error("Unreachable")
             ).also { err ->
-                request.listener?.onFailure(request, err)
+                listener?.onFailure(err)
             }
         }
 

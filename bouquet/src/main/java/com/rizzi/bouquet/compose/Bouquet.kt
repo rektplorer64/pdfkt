@@ -1,8 +1,5 @@
 package com.rizzi.bouquet.compose
 
-import android.os.Parcel
-import android.os.Parcelable
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.ScrollableDefaults
@@ -17,8 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.layout.IntervalList
-import androidx.compose.foundation.lazy.layout.LazyLayoutIntervalContent
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.Divider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -28,21 +24,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.rizzi.bouquet.PageContent
 import com.rizzi.bouquet.PageRecyclingEffects
 import com.rizzi.bouquet.PdfDocumentRenderer
-import com.rizzi.bouquet.compose.state.ResultStatus
-import com.rizzi.bouquet.compose.state.VerticalPdfReaderState
+import com.rizzi.bouquet.compose.state.LazyListPdfReaderState
 import com.rizzi.bouquet.compose.state.absoluteViewportCenterY
 import com.rizzi.bouquet.loader.DocumentLoader
-import com.rizzi.bouquet.loader.DocumentRequest
-import com.rizzi.bouquet.loader.EventListener
 import com.rizzi.bouquet.compose.state.relativeViewportCenterY
 
 
@@ -97,7 +88,7 @@ fun LazyReaderListScope.pagesIndexed(
 
 @Composable
 fun LazyPdfPageColumn(
-    state: VerticalPdfReaderState,
+    state: LazyListPdfReaderState,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     reverseLayout: Boolean = false,
@@ -113,19 +104,16 @@ fun LazyPdfPageColumn(
         modifier = modifier,
         contentAlignment = Alignment.TopCenter
     ) {
-        val context = LocalContext.current
         DocumentReaderDisposableEffect(
             state = state,
-            documentLoader = remember {
-                documentLoader ?: DocumentLoader.Builder(context).build()
-            },
+            documentLoader = documentLoader ?: state.documentLoader,
             viewportSize = IntSize(
                 constraints.maxWidth,
                 constraints.maxHeight
             )
         )
 
-        state.renderer?.let { renderer ->
+        state.renderer?.let { _ ->
             Box(modifier = Modifier.readerGesture(state, constraints)) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -171,353 +159,87 @@ fun LazyPdfPageColumn(
     }
 }
 
-//@Composable
-//fun VerticalPDFReader(
-//    state: VerticalPdfReaderState,
-//    modifier: Modifier
-//) {
-//    BoxWithConstraints(
-//        modifier = modifier,
-//        contentAlignment = Alignment.TopCenter
-//    ) {
-//        val context = LocalContext.current
-//        DocumentReaderDisposableEffect(
-//            state = state,
-//            documentLoader = remember {
-//                DocumentLoader.Builder(context).build()
-//            },
-//            viewportSize = IntSize(
-//                constraints.maxWidth,
-//                constraints.maxHeight
-//            )
-//        )
-//
-//        state.renderer?.let { pdf ->
-//            Box(modifier = Modifier.readerGesture(state, constraints)) {
-//                LazyColumn(
-//                    modifier = Modifier.fillMaxSize(),
-//                    state = state.lazyState,
-//                    horizontalAlignment = Alignment.CenterHorizontally,
-//                    contentPadding = PaddingValues(16.dp),
-//                    verticalArrangement = Arrangement.spacedBy(16.dp),
-//                ) {
-//                    items(
-//                        count = pdf.pageCount,
-//                        key = { pdf.pageLists[it].index }
-//                    ) {
-//                        val pageContent = pdf.pageLists[it].stateFlow.collectAsState().value
-//                        DisposableEffect(key1 = Unit) {
-//                            pdf.pageLists[it].load()
-//                            onDispose {
-//                                pdf.pageLists[it].recycle()
-//                            }
-//                        }
-//
-//                        when (pageContent) {
-//                            is PageContentInt.PageContent -> {
-//                                val painter = rememberAsyncImagePainter(
-//                                    model = ImageRequest.Builder(LocalContext.current)
-//                                        .data(pageContent.bitmap)
-//                                        .crossfade(true)
-//                                        .build(),
-//                                )
-//
-//                                Image(
-//                                    painter = painter,
-//                                    contentDescription = pageContent.contentDescription,
-//                                    contentScale = ContentScale.FillWidth,
-//                                    modifier = Modifier
-//                                        .clip(RoundedCornerShape(4.dp))
-//                                        .aspectRatio(pageContent.bitmap.width / pageContent.bitmap.height.toFloat())
-//                                        .fillParentMaxWidth()
-//                                )
-//                            }
-//
-//                            is PageContentInt.BlankPage -> BlackPage(
-//                                width = pageContent.width,
-//                                height = pageContent.height
-//                            )
-//                        }
-//                    }
-//                }
-//
-//                if (SHOW_CURRENT_PAGE_THRESHOLD_LINES) {
-//                    val absoluteCenterY by remember {
-//                        derivedStateOf { state.absoluteViewportCenterY() }
-//                    }
-//                    val relativeCenterY by remember {
-//                        derivedStateOf { state.relativeViewportCenterY() }
-//                    }
-//
-//                    Divider(
-//                        thickness = 4.dp,
-//                        color = Color.Red,
-//                        modifier = Modifier
-//                            .fillMaxWidth()
-//                            .offset {
-//                                IntOffset(0, relativeCenterY.toInt())
-//                            }
-//                    )
-//                    Divider(
-//                        thickness = 2.dp,
-//                        color = Color.Blue,
-//                        modifier = Modifier
-//                            .fillMaxWidth()
-//                            .offset {
-//                                IntOffset(0, absoluteCenterY.toInt())
-//                            }
-//                    )
-//                }
-//            }
-//        }
-//    }
-//}
-
 @Composable
-fun Int.dp(): Dp {
-    val density = LocalDensity.current.density
-    return (this / density).dp
+fun LazyPdfPageRow(
+    state: LazyListPdfReaderState,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    reverseLayout: Boolean = false,
+    horizontalArrangement: Arrangement.Horizontal =
+        if (!reverseLayout) Arrangement.Start else Arrangement.End,
+    verticalAlignment: Alignment.Vertical = Alignment.Top,
+    flingBehavior: FlingBehavior = ScrollableDefaults.flingBehavior(),
+    userScrollEnabled: Boolean = true,
+    documentLoader: DocumentLoader? = null,
+    content: LazyReaderListScope.() -> Unit
+) {
+    BoxWithConstraints(
+        modifier = modifier,
+        contentAlignment = Alignment.TopCenter
+    ) {
+        DocumentReaderDisposableEffect(
+            state = state,
+            documentLoader = documentLoader ?: state.documentLoader,
+            viewportSize = IntSize(
+                constraints.maxWidth,
+                constraints.maxHeight
+            )
+        )
+
+        state.renderer?.let { _ ->
+            Box(modifier = Modifier.readerGesture(state, constraints)) {
+                LazyRow (
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = horizontalArrangement,
+                    verticalAlignment = verticalAlignment,
+                    state = state.lazyState,
+                    contentPadding = contentPadding,
+                    reverseLayout = reverseLayout,
+                    flingBehavior = flingBehavior,
+                    userScrollEnabled = userScrollEnabled,
+                    content = content
+                )
+
+                if (SHOW_CURRENT_PAGE_THRESHOLD_LINES) {
+                    val absoluteCenterY by remember {
+                        derivedStateOf { state.absoluteViewportCenterY() }
+                    }
+                    val relativeCenterY by remember {
+                        derivedStateOf { state.relativeViewportCenterY() }
+                    }
+
+                    Divider(
+                        thickness = 4.dp,
+                        color = Color.Red,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset {
+                                IntOffset(0, relativeCenterY.toInt())
+                            }
+                    )
+                    Divider(
+                        thickness = 2.dp,
+                        color = Color.Blue,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset {
+                                IntOffset(0, absoluteCenterY.toInt())
+                            }
+                    )
+                }
+            }
+        }
+    }
 }
 
-
-//@OptIn(ExperimentalFoundationApi::class)
-//@Composable
-//fun HorizontalPDFReader(
-//    state: HorizontalPdfReaderState,
-//    modifier: Modifier
-//) {
-//    BoxWithConstraints(
-//        modifier = modifier,
-//        contentAlignment = Alignment.TopCenter
-//    ) {
-//        val context = LocalContext.current
-//        DocumentReaderDisposableEffect(
-//            state = state,
-//            documentLoader = remember {
-//                DocumentLoader.Builder(context).build()
-//            },
-//            viewportSize = IntSize(
-//                constraints.maxWidth,
-//                constraints.maxHeight
-//            )
-//        )
-//
-//        state.renderer?.let { pdf ->
-//            HorizontalPager(
-//                modifier = Modifier
-//                    .fillMaxSize()
-//                    .tapToZoomHorizontal(state, constraints),
-//                state = state.pagerState,
-//                userScrollEnabled = state.zoomState.scale == 1f
-//            ) { page ->
-//                val pageContent = pdf.pageLists[page].stateFlow.collectAsState().value
-//                DisposableEffect(key1 = Unit) {
-//                    pdf.pageLists[page].load()
-//                    onDispose {
-//                        pdf.pageLists[page].recycle()
-//                    }
-//                }
-//                when (pageContent) {
-//                    is PageContentInt.PageContent -> {
-//                        PdfImage(
-//                            bitmap = pageContent.bitmap,
-//                            contentDescription = pageContent.contentDescription
-//                        )
-//                    }
-//
-//                    is PageContentInt.BlankPage -> BlackPage(
-//                        width = pageContent.width,
-//                        height = pageContent.height
-//                    )
-//                }
-//            }
-//        }
-//    }
-//}
-
-//private fun load(
-//    coroutineScope: CoroutineScope,
-//    context: Context,
-//    download: suspend (DocumentResource.Remote) -> ResponseBody,
-//    state: PdfReaderState,
-//    viewportSize: IntSize,
-//    orientation: Orientation,
-//) {
-//    runCatching {
-//        val file = state.file
-//        if (file != null) {
-//            coroutineScope.launch(Dispatchers.IO) {
-//                runCatching {
-//                    val pFD =
-//                        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-//                    val textForEachPage =
-//                        if (state.isAccessibleEnable) getTextByPage(context, pFD) else emptyList()
-//                    state.renderer = PdfDocumentRenderer(
-//                        fileDescriptor = pFD,
-//                        textForEachPage = textForEachPage,
-//                        viewportSize = viewportSize,
-//                        orientation = orientation
-//                    )
-//                }.onFailure {
-//                    state.status = ResultStatus.Error(Unit, it)
-//                }
-//            }
-//        } else {
-//            when (val res = state.resource) {
-//                is DocumentResource.Local -> {
-//                    coroutineScope.launch(Dispatchers.IO) {
-//                        runCatching {
-//                            context.contentResolver.openFileDescriptor(res.uri, "r")?.let {
-//                                val textForEachPage = if (state.isAccessibleEnable) {
-//                                    getTextByPage(context, it)
-//                                } else emptyList()
-//                                state.renderer = PdfDocumentRenderer(
-//                                    fileDescriptor = it,
-//                                    textForEachPage = textForEachPage,
-//                                    viewportSize = viewportSize,
-//                                    orientation = orientation
-//                                )
-//                                state.file = context.uriToFile(res.uri)
-//                            } ?: throw IOException("File not found")
-//                        }.onFailure {
-//                            state.status = ResultStatus.Error(null, throwable = it)
-//                        }
-//                    }
-//                }
-//
-//                is DocumentResource.Remote -> {
-//                    coroutineScope.launch(Dispatchers.IO) {
-//                        runCatching {
-//                            val bufferSize = 8192
-//                            var downloaded = 0
-//
-//                            val file = File(
-//                                context.cacheDir,
-//                                generateFileName(res.url.hashCode().toHexString())
-//                            )
-//
-//                            val hasCache = file.isFile && file.length() > 0
-//                            if (!hasCache) {
-//                                val response = download(res)
-//                                val byteStream = response.byteStream()
-//
-//                                byteStream.use { input ->
-//                                    file.outputStream().use { output ->
-//                                        val totalBytes = response.contentLength()
-//                                        var data = ByteArray(bufferSize)
-//                                        var count = input.read(data)
-//                                        while (count != -1) {
-//                                            if (totalBytes > 0) {
-//                                                downloaded += bufferSize
-//                                                state.mLoadPercent = (downloaded * (100 / totalBytes.toFloat())).toInt()
-//                                            }
-//                                            output.write(data, 0, count)
-//                                            data = ByteArray(bufferSize)
-//                                            count = input.read(data)
-//                                        }
-//                                    }
-//                                }
-//                            }
-//
-//                            val fileDescriptor = ParcelFileDescriptor.open(
-//                                file,
-//                                ParcelFileDescriptor.MODE_READ_ONLY
-//                            )
-//                            val textForEachPage = if (state.isAccessibleEnable) {
-//                                getTextByPage(context, fileDescriptor)
-//                            } else emptyList()
-//
-//                            state.renderer = PdfDocumentRenderer(
-//                                fileDescriptor = fileDescriptor,
-//                                textForEachPage = textForEachPage,
-//                                viewportSize = viewportSize,
-//                                orientation = orientation
-//                            )
-//                            state._file = file
-//                        }.onFailure {
-//                            state._throwable = it
-//                        }
-//                    }
-//                }
-//
-//                is DocumentResource.Base64 -> {
-//                    coroutineScope.launch(Dispatchers.IO) {
-//                        runCatching {
-//                            val file = context.base64ToPdf(res.file)
-//                            val pFD = ParcelFileDescriptor.open(
-//                                file,
-//                                ParcelFileDescriptor.MODE_READ_ONLY
-//                            )
-//                            val textForEachPage = if (state.isAccessibleEnable) {
-//                                getTextByPage(context, pFD)
-//                            } else emptyList()
-//                            state.renderer = PdfDocumentRenderer(
-//                                fileDescriptor = pFD,
-//                                textForEachPage = textForEachPage,
-//                                viewportSize = viewportSize,
-//                                orientation = orientation
-//                            )
-//                            state._file = file
-//                        }.onFailure {
-//                            state._throwable = it
-//                        }
-//                    }
-//                }
-//
-//                is DocumentResource.Asset -> {
-//                    coroutineScope.launch(Dispatchers.IO) {
-//                        runCatching {
-//                            val bufferSize = 8192
-//                            val inputStream = context.resources.openRawResource(res.assetId)
-//                            val outFile = File(context.cacheDir, generateFileName())
-//                            inputStream.use { input ->
-//                                outFile.outputStream().use { output ->
-//                                    var data = ByteArray(bufferSize)
-//                                    var count = input.read(data)
-//                                    while (count != -1) {
-//                                        output.write(data, 0, count)
-//                                        data = ByteArray(bufferSize)
-//                                        count = input.read(data)
-//                                    }
-//                                }
-//                            }
-//                            val pFD = ParcelFileDescriptor.open(
-//                                outFile,
-//                                ParcelFileDescriptor.MODE_READ_ONLY
-//                            )
-//                            val textForEachPage = if (state.isAccessibleEnable) {
-//                                getTextByPage(context, pFD)
-//                            } else emptyList()
-//                            state.renderer = PdfDocumentRenderer(
-//                                fileDescriptor = pFD,
-//                                textForEachPage = textForEachPage,
-//                                viewportSize = viewportSize,
-//                                orientation = orientation
-//                            )
-//                            state._file = outFile
-//                        }.onFailure {
-//                            state._throwable = it
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }.onFailure {
-//        state._throwable = it
-//    }
-//}
-
 @Composable
-fun BlackPage(
-    width: Int,
-    height: Int
+fun BlankPage(
+    size: DpSize,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
-            .size(
-                width = width.dp(),
-                height = height.dp()
-            )
+        modifier = modifier
+            .size(size)
             .background(color = Color.White)
     )
 }

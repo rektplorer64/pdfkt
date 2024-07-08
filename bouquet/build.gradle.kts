@@ -44,6 +44,14 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.13"
     }
+
+    publishing {
+        multipleVariants {
+            allVariants()
+            withJavadocJar()
+            withSourcesJar()
+        }
+    }
 }
 
 // Task to bundle the source code into a jar
@@ -77,6 +85,11 @@ afterEvaluate {
         }
     }
 }
+
+//tasks.named("bouquet:generateMetadataFileForReleasePublication") {
+//    dependsOn(":bouquet:sourceJar")
+//    // other task configurations...
+//}
 
 
 dependencies {

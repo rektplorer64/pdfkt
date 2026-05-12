@@ -13,7 +13,6 @@ import okhttp3.Call
 import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.internal.toHexString
 import java.io.File
 import java.io.IOException
 
@@ -155,7 +154,7 @@ class RealDocumentLoader(
 
                         val file = File(
                             applicationContext.cacheDir,
-                            generateFileName(res.url.hashCode().toHexString())
+                            generateFileName(Integer.toHexString(res.url.hashCode()))
                         )
 
                         val hasCache = file.isFile && file.length() > 0
